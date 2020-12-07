@@ -19,16 +19,17 @@ class Tab:
 
 
 class Page:
-    def __init__(self, page_name, parent, data={}):
+    def __init__(self, page_name, parent, path=None):
         self.id = util.generate_random_string()
         self.page_name = page_name
-        self.initial_data = data
+        self.path = path
         self.parent = parent
+        self.path = path
 
         self.category_tracker = trackers.CategoryTracker()
 
     def render(self):
-        if not self.initial_data:
+        if not self.path:
             # Initiate page
             with simple.group(f"categories{self.id}", parent=self.parent):
                 dpg.add_spacing(name=f"catspace{self.id}", count=1)
@@ -38,6 +39,9 @@ class Page:
                     label="Add New Category",
                 )
             dpg.add_spacing(name="", count=10)
+        else:
+            # TODO: Load file
+            pass
 
     def add_category(self, sender, data):
         random_id = util.generate_random_string()
@@ -125,6 +129,7 @@ class MainGui:
                 with simple.menu("File"):
                     dpg.add_menu_item("New", callback=self.new_tab)
                     dpg.add_menu_item("Load", callback=self.load_tasker)
+                    # TODO: Actually do the save tasks
                     dpg.add_menu_item("Save")
                     dpg.add_menu_item("Save as...")
                     dpg.add_separator()
@@ -171,10 +176,11 @@ class MainGui:
         sys.exit()
 
     def load_tasker(self, sender, data):
-        dpg.open_file_dialog(self.__load_file)
+        dpg.open_file_dialog(self.__load_file, ".task,.*")
 
     def __load_file(self, sender, data):
-        print(data[0] + data[1])
+        # TODO: Parse file
+        print("/".join([data[0], data[1]]))
 
 
 def main():
