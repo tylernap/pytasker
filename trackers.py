@@ -1,8 +1,7 @@
-import binascii
-import os
-
 from dearpygui import core as dpg
 from dearpygui import simple
+
+import util
 
 
 class CategoryTracker:
@@ -52,9 +51,10 @@ class TaskTracker:
 
 
 class Category:
-    def __init__(self, label="", color=[0, 0, 0, -1]):
-        self.id = generate_random_string()
+    def __init__(self, parent, label="", color=[0, 0, 0, -1]):
+        self.id = util.generate_random_string()
         self.group = "catgroup" + self.id
+        self.parent = parent
         self.label = label
         self.color = color
         self.tasks = TaskTracker()
@@ -64,7 +64,10 @@ class Category:
         """
         Draw the Category to the screen
         """
-        with simple.group(self.group, parent="Categories", before="AddCategorySpace"):
+        parent_id = self.parent.replace("categories", "")
+        with simple.group(
+            self.group, parent=self.parent, before=f"catspace{parent_id}"
+        ):
             # Render the Category group
             dpg.add_spacing(count=2)
             dpg.add_checkbox(self.id, label="")
@@ -81,7 +84,7 @@ class Category:
 
 class Task:
     def __init__(self, label, category_id):
-        self.id = generate_random_string()
+        self.id = util.generate_random_string()
         self.group = "taskgroup" + self.id
         self.label = label
         self.category_id = category_id
@@ -98,7 +101,3 @@ class Task:
     def remove(self):
         if dpg.does_item_exist(self.group):
             dpg.delete_item(self.group)
-
-
-def generate_random_string():
-    return binascii.b2a_hex(os.urandom(8)).decode("utf-8")

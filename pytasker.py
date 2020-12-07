@@ -1,69 +1,52 @@
-import binascii
-import os
 import sys
 
 from dearpygui import core as dpg
 from dearpygui import simple
 
 import trackers
+import util
 
 
-class MainGui:
-    def __init__(self, width=200, height=200, theme="Dark"):
-        self.theme = theme
-        self.height = height
-        self.width = width
+class Tab:
+    def __init__(self, tab_name, parent):
+        self.id = util.generate_random_string()
+        self.tab_name = tab_name
+        self.parent = parent
+
+    def render(self, page):
+        with simple.tab(name=f"tab{self.id}", parent=self.parent, label=self.tab_name):
+            page.render()
+
+
+class Page:
+    def __init__(self, page_name, parent, data={}):
+        self.id = util.generate_random_string()
+        self.page_name = page_name
+        self.initial_data = data
+        self.parent = parent
+
         self.category_tracker = trackers.CategoryTracker()
 
-    def make_gui(self):
-        dpg.set_main_window_size(self.width, self.height)
-        dpg.set_theme(self.theme)
-        with simple.window("Main", no_title_bar=True):
-            with simple.menu_bar("Menu"):
-                with simple.menu("File"):
-                    dpg.add_menu_item("New")
-                    dpg.add_menu_item("Load")
-                    dpg.add_separator()
-                    dpg.add_menu_item("Quit", callback=self.exit_program)
-                with simple.menu("Themes"):
-                    dpg.add_menu_item("Dark", callback=self.theme_callback)
-                    dpg.add_menu_item("Light", callback=self.theme_callback)
-                    dpg.add_menu_item("Classic", callback=self.theme_callback)
-                    dpg.add_menu_item("Dark 2", callback=self.theme_callback)
-                    dpg.add_menu_item("Grey", callback=self.theme_callback)
-                    dpg.add_menu_item("Dark Grey", callback=self.theme_callback)
-                    dpg.add_menu_item("Cherry", callback=self.theme_callback)
-                    dpg.add_menu_item("Purple", callback=self.theme_callback)
-                    dpg.add_menu_item("Gold", callback=self.theme_callback)
-                    dpg.add_menu_item("Red", callback=self.theme_callback)
-
-            dpg.set_main_window_title("pytasker")
-            dpg.add_text("Hello!")
-            with simple.group("Categories"):
-                dpg.add_spacing(name="AddCategorySpace", count=1)
+    def render(self):
+        if not self.initial_data:
+            # Initiate page
+            with simple.group(f"categories{self.id}", parent=self.parent):
+                dpg.add_spacing(name=f"catspace{self.id}", count=1)
                 dpg.add_button(
-                    "AddCategory", callback=self.add_category, label="Add New Category"
+                    f"addcat{self.id}",
+                    callback=self.add_category,
+                    label="Add New Category",
                 )
             dpg.add_spacing(name="", count=10)
 
-    def start_gui(self):
-        dpg.start_dearpygui(primary_window="Main")
-
-    def theme_callback(self, sender, data):
-        dpg.set_theme(sender)
-
-    def generate_random_string(self):
-        return binascii.b2a_hex(os.urandom(8)).decode("utf-8")
-
-    def exit_program(self, sender, data):
-        sys.exit()
-
     def add_category(self, sender, data):
-        random_id = self.generate_random_string()
-        with simple.group(f"newcategory{random_id}", before="AddCategorySpace"):
+        random_id = util.generate_random_string()
+        with simple.group(f"newcategory{random_id}", parent=f"categories{self.id}"):
             dpg.add_input_text(f"catlabel{random_id}", label="")
             dpg.add_same_line(spacing=10)
-            dpg.add_button("Done", callback=self.submit_category)
+            dpg.add_button(
+                f"catdone{random_id}", callback=self.submit_category, label="Done"
+            )
             dpg.add_color_picker4(
                 f"catcolor{random_id}",
                 default_value=[255, 0, 0, 255],
@@ -73,8 +56,9 @@ class MainGui:
             )
 
     def submit_category(self, sender, data):
-        input_id = dpg.get_item_parent(sender).replace("newcategory", "")
-        category = trackers.Category()
+        parent = dpg.get_item_parent(sender)
+        input_id = parent.replace("newcategory", "")
+        category = trackers.Category(parent=f"categories{self.id}")
         self.category_tracker.add_category(category)
         category.label = dpg.get_value(f"catlabel{input_id}")
         category.color = dpg.get_value(f"catcolor{input_id}")
@@ -95,7 +79,7 @@ class MainGui:
         dpg.delete_item(dpg.get_item_parent(sender))
 
     def add_task(self, sender, data):
-        random_id = self.generate_random_string()
+        random_id = util.generate_random_string()
         parent = dpg.get_item_parent(sender)
         with simple.group(
             f"newtask{random_id}",
@@ -124,6 +108,58 @@ class MainGui:
         task.render()
 
         dpg.delete_item(dpg.get_item_parent(sender))
+
+
+class MainGui:
+    def __init__(self, width=200, height=200, theme="Dark"):
+        self.theme = theme
+        self.height = height
+        self.width = width
+
+    def make_gui(self):
+        dpg.set_main_window_size(self.width, self.height)
+        dpg.set_theme(self.theme)
+        with simple.window("Main", no_title_bar=True):
+            dpg.set_main_window_title("pytasker")
+            with simple.menu_bar("Menu"):
+                with simple.menu("File"):
+                    dpg.add_menu_item("New", callback=self.new_tab)
+                    dpg.add_menu_item("Load")
+                    dpg.add_menu_item("Save")
+                    dpg.add_menu_item("Save as...")
+                    dpg.add_separator()
+                    dpg.add_menu_item("Quit", callback=self.exit_program)
+                with simple.menu("Themes"):
+                    dpg.add_menu_item("Dark", callback=self.theme_callback)
+                    dpg.add_menu_item("Light", callback=self.theme_callback)
+                    dpg.add_menu_item("Classic", callback=self.theme_callback)
+                    dpg.add_menu_item("Dark 2", callback=self.theme_callback)
+                    dpg.add_menu_item("Grey", callback=self.theme_callback)
+                    dpg.add_menu_item("Dark Grey", callback=self.theme_callback)
+                    dpg.add_menu_item("Cherry", callback=self.theme_callback)
+                    dpg.add_menu_item("Purple", callback=self.theme_callback)
+                    dpg.add_menu_item("Gold", callback=self.theme_callback)
+                    dpg.add_menu_item("Red", callback=self.theme_callback)
+
+            dpg.add_tab_bar(name="tab_bar_1", parent="Main")
+            with simple.group("inittext"):
+                dpg.add_text("Hello! Select File - New to get started")
+
+    def new_tab(self, sender, data):
+        if dpg.does_item_exist("inittext"):
+            dpg.delete_item("inittext")
+        tab = Tab("NewTab", "tab_bar_1")
+        page = Page("NewPage", f"tab{tab.id}")
+        tab.render(page)
+
+    def start_gui(self):
+        dpg.start_dearpygui(primary_window="Main")
+
+    def theme_callback(self, sender, data):
+        dpg.set_theme(sender)
+
+    def exit_program(self, sender, data):
+        sys.exit()
 
 
 def main():
