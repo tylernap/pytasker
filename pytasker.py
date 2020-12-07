@@ -124,7 +124,7 @@ class MainGui:
             with simple.menu_bar("Menu"):
                 with simple.menu("File"):
                     dpg.add_menu_item("New", callback=self.new_tab)
-                    dpg.add_menu_item("Load")
+                    dpg.add_menu_item("Load", callback=self.load_tasker)
                     dpg.add_menu_item("Save")
                     dpg.add_menu_item("Save as...")
                     dpg.add_separator()
@@ -146,10 +146,19 @@ class MainGui:
                 dpg.add_text("Hello! Select File - New to get started")
 
     def new_tab(self, sender, data):
+        with simple.child("NewPopup"):
+            dpg.add_text("Input your new tab name:")
+            dpg.add_input_text("NewTabName", label="")
+            dpg.add_same_line(spacing=2)
+            dpg.add_button("NewTabGo", label="Go", callback=self.create_tab)
+
+    def create_tab(self, sender, data):
+        dpg.delete_item("NewPopup")
         if dpg.does_item_exist("inittext"):
             dpg.delete_item("inittext")
-        tab = Tab("NewTab", "tab_bar_1")
-        page = Page("NewPage", f"tab{tab.id}")
+        tab_name = dpg.get_value("NewTabName")
+        tab = Tab(tab_name, "tab_bar_1")
+        page = Page(f"{tab_name}Page", f"tab{tab.id}")
         tab.render(page)
 
     def start_gui(self):
@@ -161,10 +170,16 @@ class MainGui:
     def exit_program(self, sender, data):
         sys.exit()
 
+    def load_tasker(self, sender, data):
+        dpg.open_file_dialog(self.__load_file)
+
+    def __load_file(self, sender, data):
+        print(data[0] + data[1])
+
 
 def main():
 
-    gui = MainGui(500, 500, theme="Dark")
+    gui = MainGui(800, 600, theme="Dark")
     gui.make_gui()
     gui.start_gui()
 
