@@ -4,6 +4,37 @@ from dearpygui import simple
 import util
 
 
+class TabTracker:
+    def __init__(self, tabs=[]):
+        self.tabs = tabs
+
+    def add_tab(self, tab):
+        if type(tab) == Tab:
+            self.tabs.append(tab)
+        else:
+            raise Exception("Input provided is not a Tab")
+
+    def get_tab(self, tab_id):
+        try:
+            tab = list(filter(lambda x: x.id == tab_id, self.tabs))[0]
+        except IndexError:
+            tab = None
+
+        return tab
+
+    def find_tab(self, tab_name):
+        try:
+            tab = list(filter(lambda x: x.tab_name == tab_name, self.tabs))[0]
+        except IndexError:
+            tab = None
+
+        return tab
+
+    def remove_tab(self, tab_id):
+        tab = self.get_tab(tab_id)
+        self.tabs.remove(tab)
+
+
 class CategoryTracker:
     def __init__(self, categories=[]):
         self.categories = categories
@@ -48,6 +79,19 @@ class TaskTracker:
     def remove_task(self, task_id):
         task = self.get_task(task_id)
         self.tasks.remove(task)
+
+
+class Tab:
+    def __init__(self, tab_name, parent):
+        self.id = util.generate_random_string()
+        self.tab_name = tab_name
+        self.parent = parent
+        self.page = None
+
+    def render(self, page):
+        with simple.tab(name=f"tab{self.id}", parent=self.parent, label=self.tab_name):
+            page.render()
+        self.page = page
 
 
 class Category:

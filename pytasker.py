@@ -1,4 +1,6 @@
+import os
 import sys
+import yaml
 
 from dearpygui import core as dpg
 from dearpygui import simple
@@ -7,24 +9,13 @@ import trackers
 import util
 
 
-class Tab:
-    def __init__(self, tab_name, parent):
-        self.id = util.generate_random_string()
-        self.tab_name = tab_name
-        self.parent = parent
-
-    def render(self, page):
-        with simple.tab(name=f"tab{self.id}", parent=self.parent, label=self.tab_name):
-            page.render()
-
-
 class Page:
-    def __init__(self, page_name, parent, path=None):
+    def __init__(self, page_name, parent, path=None, filename=None):
         self.id = util.generate_random_string()
         self.page_name = page_name
-        self.path = path
         self.parent = parent
         self.path = path
+        self.filename = filename
 
         self.category_tracker = trackers.CategoryTracker()
 
@@ -42,6 +33,37 @@ class Page:
         else:
             # TODO: Load file
             pass
+
+    def render_data_dict(self):
+        data = {}
+        data["pagename"] = self.page_name
+        data["id"] = self.id
+        data["path"] = self.path
+        data["filename"] = self.filename
+
+        data["categories"] = []
+        for category in self.category_tracker.categories:
+            data_category = {}
+            data_category["id"] = category.id
+            data_category["group"] = category.group
+            data_category["label"] = category.label
+            data_category["color"] = category.color
+            data_category["parent"] = category.parent
+            data_category["complete"] = category.complete
+            data_category["tasks"] = []
+            for task in category.tasks.tasks:
+                data_task = {}
+                data_task["id"] = task.id
+                data_task["group"] = task.group
+                data_task["label"] = task.label
+                data_task["category_id"] = task.category_id
+                data_task["complete"] = task.complete
+
+                data_category["tasks"].append(data_task)
+
+            data["categories"].append(data_category)
+
+        return data
 
     def add_category(self, sender, data):
         random_id = util.generate_random_string()
@@ -119,6 +141,9 @@ class MainGui:
         self.theme = theme
         self.height = height
         self.width = width
+        self.tab_tracker = trackers.TabTracker()
+
+        self.last_tab_saved = None
 
     def make_gui(self):
         dpg.set_main_window_size(self.width, self.height)
@@ -127,11 +152,11 @@ class MainGui:
             dpg.set_main_window_title("pytasker")
             with simple.menu_bar("Menu"):
                 with simple.menu("File"):
-                    dpg.add_menu_item("New", callback=self.new_tab)
-                    dpg.add_menu_item("Load", callback=self.load_tasker)
+                    dpg.add_menu_item("New Page", callback=self.new_tab)
+                    dpg.add_menu_item("Load Page", callback=self.load_page)
                     # TODO: Actually do the save tasks
-                    dpg.add_menu_item("Save")
-                    dpg.add_menu_item("Save as...")
+                    dpg.add_menu_item("Save Page", callback=self.save_page_dialog)
+                    dpg.add_menu_item("Save Page as...")
                     dpg.add_separator()
                     dpg.add_menu_item("Quit", callback=self.exit_program)
                 with simple.menu("Themes"):
@@ -162,7 +187,8 @@ class MainGui:
         if dpg.does_item_exist("inittext"):
             dpg.delete_item("inittext")
         tab_name = dpg.get_value("NewTabName")
-        tab = Tab(tab_name, "tab_bar_1")
+        tab = trackers.Tab(tab_name, "tab_bar_1")
+        self.tab_tracker.add_tab(tab)
         page = Page(f"{tab_name}Page", f"tab{tab.id}")
         tab.render(page)
 
@@ -175,12 +201,52 @@ class MainGui:
     def exit_program(self, sender, data):
         sys.exit()
 
-    def load_tasker(self, sender, data):
+    def load_page(self, sender, data):
         dpg.open_file_dialog(self.__load_file, ".task,.*")
 
     def __load_file(self, sender, data):
-        # TODO: Parse file
-        print("/".join([data[0], data[1]]))
+        path = data[0]
+        if data[1].endswith(".task"):
+            filename = data[1]
+        else:
+            filename = data[1] + ".task"
+
+        with open(os.path.join(path, filename)) as file:
+            data = yaml.load(file, Loader=yaml.FullLoader)
+
+        print(data)
+
+    def save_page_dialog(self, sender, data):
+        tabs = [{"name": tab.tab_name, "id": tab.id} for tab in self.tab_tracker.tabs]
+        with simple.child("SavePopup"):
+            dpg.add_text("Choose which tab to save:")
+            dpg.add_radio_button("SaveRadio", items=[tab["name"] for tab in tabs])
+            dpg.add_spacing(count=2)
+            dpg.add_button("SaveButton", label="Save", callback=self.save_page)
+
+    def save_page(self, sender, data):
+        self.last_tab_saved = dpg.get_value("SaveRadio")
+        dpg.delete_item("SavePopup")
+        dpg.open_file_dialog(self.__save_file, ".task,.*")
+
+    def save_page_as(self, sender, data):
+        dpg.open_file_dialog(self.__save_file, ".task,.*")
+
+    def __save_file(self, sender, data):
+        path = data[0]
+        if data[1].endswith(".task"):
+            filename = data[1]
+        else:
+            filename = data[1] + ".task"
+
+        tab = self.tab_tracker.tabs[self.last_tab_saved]
+        page = tab.page
+
+        data = page.render_data_dict()
+
+        with open(os.path.join(path, filename), "w") as file:
+            yaml.dump(data, file)
+        print(os.path.join(path, filename))
 
 
 def main():
