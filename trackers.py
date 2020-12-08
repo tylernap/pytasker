@@ -88,10 +88,10 @@ class Tab:
         self.parent = parent
         self.page = None
 
-    def render(self, page):
-        with simple.tab(name=f"tab{self.id}", parent=self.parent, label=self.tab_name):
-            page.render()
+    def render(self, page, page_data=None):
         self.page = page
+        with simple.tab(name=f"tab{self.id}", parent=self.parent, label=self.tab_name):
+            page.render(page_data)
 
 
 class Category:

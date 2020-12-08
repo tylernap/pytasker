@@ -19,20 +19,40 @@ class Page:
 
         self.category_tracker = trackers.CategoryTracker()
 
-    def render(self):
-        if not self.path:
-            # Initiate page
-            with simple.group(f"categories{self.id}", parent=self.parent):
-                dpg.add_spacing(name=f"catspace{self.id}", count=1)
-                dpg.add_button(
-                    f"addcat{self.id}",
-                    callback=self.add_category,
-                    label="Add New Category",
+    def render(self, page_data=None):
+        # Initiate page
+        with simple.group(f"categories{self.id}", parent=self.parent):
+            dpg.add_spacing(name=f"catspace{self.id}", count=1)
+            dpg.add_button(
+                f"addcat{self.id}",
+                callback=self.add_category,
+                label="Add New Category",
+            )
+        dpg.add_spacing(name="", count=10)
+
+        if page_data:
+            self.page_name = page_data.get("pagename")
+            self.path = page_data.get("path")
+            self.filename = page_data.get("filename")
+
+            for category in page_data.get("categories"):
+                category_id = self.submit_category(
+                    "",
+                    {
+                        "label": category["label"],
+                        "color": category["color"],
+                        "complete": category["complete"],
+                    },
                 )
-            dpg.add_spacing(name="", count=10)
-        else:
-            # TODO: Load file
-            pass
+                for task in category["tasks"]:
+                    self.submit_task(
+                        category_id,
+                        {
+                            "label": task["label"],
+                            "complete": task["complete"],
+                            "parent": f"cattasks{category_id}",
+                        },
+                    )
 
     def render_data_dict(self):
         data = {}
@@ -82,12 +102,22 @@ class Page:
             )
 
     def submit_category(self, sender, data):
-        parent = dpg.get_item_parent(sender)
-        input_id = parent.replace("newcategory", "")
+        if data:
+            category_label = data["label"]
+            category_color = data["color"]
+        else:
+            parent = dpg.get_item_parent(sender)
+            input_id = parent.replace("newcategory", "")
+            category_label = dpg.get_value(f"catlabel{input_id}")
+            category_color = dpg.get_value(f"catcolor{input_id}")
+            dpg.delete_item(parent)
+
         category = trackers.Category(parent=f"categories{self.id}")
         self.category_tracker.add_category(category)
-        category.label = dpg.get_value(f"catlabel{input_id}")
-        category.color = dpg.get_value(f"catcolor{input_id}")
+        category.label = category_label
+        category.color = category_color
+        if data:
+            category.complete = data["complete"]
         category.render()
 
         # Render the Add Task button
@@ -102,7 +132,7 @@ class Page:
             )
             dpg.unindent()
 
-        dpg.delete_item(dpg.get_item_parent(sender))
+        return category.id
 
     def add_task(self, sender, data):
         random_id = util.generate_random_string()
@@ -124,16 +154,21 @@ class Page:
             dpg.unindent()
 
     def submit_task(self, sender, data):
-        input_id = dpg.get_item_parent(sender).replace("newtask", "")
-        parent = data.get("parent").replace("cattasks", "")
-        task = trackers.Task(dpg.get_value(f"tasklabel{input_id}"), parent)
+        if "label" in data and "complete" in data:
+            task_label = data["label"]
+            parent = data.get("parent").replace("cattasks", "")
+        else:
+            input_id = dpg.get_item_parent(sender).replace("newtask", "")
+            parent = data.get("parent").replace("cattasks", "")
+            task_label = dpg.get_value(f"tasklabel{input_id}")
+            dpg.delete_item(dpg.get_item_parent(sender))
+        task = trackers.Task(task_label, parent)
+        if "complete" in data:
+            task.complete = data["complete"]
         category = self.category_tracker.get_category(parent)
         category.tasks.tasks.append(task)
 
-        task.label = dpg.get_value(f"tasklabel{input_id}")
         task.render()
-
-        dpg.delete_item(dpg.get_item_parent(sender))
 
 
 class MainGui:
@@ -214,7 +249,7 @@ class MainGui:
         with open(os.path.join(path, filename)) as file:
             data = yaml.load(file, Loader=yaml.FullLoader)
 
-        print(data)
+        self.__restore_tab(data)
 
     def save_page_dialog(self, sender, data):
         tabs = [{"name": tab.tab_name, "id": tab.id} for tab in self.tab_tracker.tabs]
@@ -242,11 +277,27 @@ class MainGui:
         tab = self.tab_tracker.tabs[self.last_tab_saved]
         page = tab.page
 
+        page.path = path
+        page.filename = filename
+
         data = page.render_data_dict()
 
         with open(os.path.join(path, filename), "w") as file:
             yaml.dump(data, file)
-        print(os.path.join(path, filename))
+
+    def __restore_tab(self, data):
+        try:
+            if dpg.does_item_exist("inittext"):
+                dpg.delete_item("inittext")
+            tab = trackers.Tab(data["pagename"].replace("Page", ""), "tab_bar_1")
+            self.tab_tracker.add_tab(tab)
+            page = Page(
+                data["pagename"], f"tab{tab.id}", data["path"], data["filename"]
+            )
+            tab.render(page, data)
+        except Exception as e:
+            # TODO: Actually do something about this
+            raise e
 
 
 def main():
