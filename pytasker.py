@@ -18,6 +18,7 @@ class Page:
         self.filename = filename
 
         self.category_tracker = trackers.CategoryTracker()
+        self.changes = False
 
     def render(self, page_data=None):
         # Initiate page
@@ -53,6 +54,10 @@ class Page:
                             "parent": f"cattasks{category_id}",
                         },
                     )
+
+        item = dpg.get_item_configuration(self.parent)
+        dpg.configure_item(self.parent, label=item["label"].replace("!", ""))
+        self.changes = False
 
     def render_data_dict(self):
         data = {}
@@ -120,6 +125,11 @@ class Page:
             category.complete = data["complete"]
         category.render()
 
+        if not self.changes:
+            item = dpg.get_item_configuration(self.parent)
+            dpg.configure_item(self.parent, label="!" + item["label"])
+            self.changes = True
+
         # Render the Add Task button
         with simple.group(f"cattasks{category.id}", parent=f"catgroup{category.id}"):
             dpg.add_indent()
@@ -156,12 +166,11 @@ class Page:
     def submit_task(self, sender, data):
         if "label" in data and "complete" in data:
             task_label = data["label"]
-            parent = data.get("parent").replace("cattasks", "")
         else:
             input_id = dpg.get_item_parent(sender).replace("newtask", "")
-            parent = data.get("parent").replace("cattasks", "")
             task_label = dpg.get_value(f"tasklabel{input_id}")
             dpg.delete_item(dpg.get_item_parent(sender))
+        parent = data.get("parent").replace("cattasks", "")
         task = trackers.Task(task_label, parent)
         if "complete" in data:
             task.complete = data["complete"]
@@ -169,6 +178,11 @@ class Page:
         category.tasks.tasks.append(task)
 
         task.render()
+
+        if not self.changes:
+            item = dpg.get_item_configuration(self.parent)
+            dpg.configure_item(self.parent, label="!" + item["label"])
+            self.changes = True
 
 
 class MainGui:
@@ -189,9 +203,7 @@ class MainGui:
                 with simple.menu("File"):
                     dpg.add_menu_item("New Page", callback=self.new_tab)
                     dpg.add_menu_item("Load Page", callback=self.load_page)
-                    # TODO: Actually do the save tasks
                     dpg.add_menu_item("Save Page", callback=self.save_page_dialog)
-                    dpg.add_menu_item("Save Page as...")
                     dpg.add_separator()
                     dpg.add_menu_item("Quit", callback=self.exit_program)
                 with simple.menu("Themes"):
@@ -211,7 +223,7 @@ class MainGui:
                 dpg.add_text("Hello! Select File - New to get started")
 
     def new_tab(self, sender, data):
-        with simple.child("NewPopup"):
+        with simple.child("NewPopup", height=60):
             dpg.add_text("Input your new tab name:")
             dpg.add_input_text("NewTabName", label="")
             dpg.add_same_line(spacing=2)
@@ -253,7 +265,8 @@ class MainGui:
 
     def save_page_dialog(self, sender, data):
         tabs = [{"name": tab.tab_name, "id": tab.id} for tab in self.tab_tracker.tabs]
-        with simple.child("SavePopup"):
+        dialog_height = 30 * (len(tabs) + 2)
+        with simple.child("SavePopup", height=dialog_height):
             dpg.add_text("Choose which tab to save:")
             dpg.add_radio_button("SaveRadio", items=[tab["name"] for tab in tabs])
             dpg.add_spacing(count=2)
@@ -264,26 +277,35 @@ class MainGui:
         dpg.delete_item("SavePopup")
         dpg.open_file_dialog(self.__save_file, ".task,.*")
 
-    def save_page_as(self, sender, data):
-        dpg.open_file_dialog(self.__save_file, ".task,.*")
-
     def __save_file(self, sender, data):
-        path = data[0]
-        if data[1].endswith(".task"):
-            filename = data[1]
-        else:
-            filename = data[1] + ".task"
+        try:
+            path = data[0]
+            if data[1].endswith(".task"):
+                filename = data[1]
+            else:
+                filename = data[1] + ".task"
 
-        tab = self.tab_tracker.tabs[self.last_tab_saved]
-        page = tab.page
+            tab = self.tab_tracker.tabs[self.last_tab_saved]
+            page = tab.page
 
-        page.path = path
-        page.filename = filename
+            page.path = path
+            page.filename = filename
 
-        data = page.render_data_dict()
+            data = page.render_data_dict()
+            full_path = os.path.join(path, filename)
 
-        with open(os.path.join(path, filename), "w") as file:
-            yaml.dump(data, file)
+            if os.path.exists(full_path):
+                os.remove(full_path)
+
+            with open(full_path, "w") as file:
+                yaml.dump(data, file)
+
+            item = dpg.get_item_configuration(f"tab{tab.id}")
+            dpg.configure_item(f"tab{tab.id}", label=item["label"].replace("!", ""))
+            page.changes = False
+        except Exception as e:
+            # TODO: Do something about it
+            raise e
 
     def __restore_tab(self, data):
         try:

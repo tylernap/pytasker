@@ -90,7 +90,9 @@ class Tab:
 
     def render(self, page, page_data=None):
         self.page = page
-        with simple.tab(name=f"tab{self.id}", parent=self.parent, label=self.tab_name):
+        with simple.tab(
+            name=f"tab{self.id}", closable=True, parent=self.parent, label=self.tab_name
+        ):
             page.render(page_data)
 
 
@@ -114,7 +116,12 @@ class Category:
         ):
             # Render the Category group
             dpg.add_spacing(count=2)
-            dpg.add_checkbox(self.id, label="")
+            dpg.add_checkbox(
+                self.id,
+                label="",
+                default_value=self.complete,
+                callback=self.checkbox_check,
+            )
             dpg.add_same_line(spacing=10)
             dpg.add_text(self.label, color=self.color)
 
@@ -124,6 +131,13 @@ class Category:
         """
         if dpg.does_item_exist(self.group):
             dpg.delete_item(self.group)
+
+    def checkbox_check(self, sender, data):
+        self.complete = dpg.get_value(sender)
+        dpg.configure_item(self.id, enabled=not self.complete)
+        for task in self.tasks.tasks:
+            dpg.set_value(task.id, True)
+            task.checkbox_check(task.id, None)
 
 
 class Task:
@@ -139,9 +153,18 @@ class Task:
             self.group, parent=self.category_id, before=f"taskspace{self.category_id}"
         ):
             dpg.add_indent()
-            dpg.add_checkbox(self.id, label=self.label)
+            dpg.add_checkbox(
+                self.id,
+                label=self.label,
+                default_value=self.complete,
+                callback=self.checkbox_check,
+            )
             dpg.unindent()
 
     def remove(self):
         if dpg.does_item_exist(self.group):
             dpg.delete_item(self.group)
+
+    def checkbox_check(self, sender, data):
+        self.complete = dpg.get_value(sender)
+        dpg.configure_item(self.id, enabled=not self.complete)
