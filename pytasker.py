@@ -159,7 +159,7 @@ class Page:
                 f"taskdone{random_id}",
                 label="Done",
                 callback=self.submit_task,
-                callback_data={"parent": parent},
+                callback_data={"parent": parent, "category": data["category"]},
             )
             dpg.unindent()
 
@@ -170,11 +170,10 @@ class Page:
             input_id = dpg.get_item_parent(sender).replace("newtask", "")
             task_label = dpg.get_value(f"tasklabel{input_id}")
             dpg.delete_item(dpg.get_item_parent(sender))
-        parent = data.get("parent").replace("cattasks", "")
-        task = trackers.Task(task_label, parent)
+        task = trackers.Task(task_label, data["category"])
         if "complete" in data:
             task.complete = data["complete"]
-        category = self.category_tracker.get_category(parent)
+        category = self.category_tracker.get_category(data["category"])
         category.tasks.tasks.append(task)
 
         task.render()
