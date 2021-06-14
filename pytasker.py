@@ -323,7 +323,7 @@ class MainGui:
 
 def main():
 
-    gui = MainGui(800, 600, theme="Dark")
+    gui = MainGui(800, 800, theme="Dark")
     gui.make_gui()
     gui.start_gui()
 
