@@ -4,9 +4,9 @@ from dearpygui import simple
 import util
 
 
-class TabTracker:
+class TabTracker(object):
     def __init__(self, tabs=[]):
-        self.tabs = tabs
+        self.tabs = TabList(tabs)
 
     def add_tab(self, tab):
         if type(tab) == Tab:
@@ -35,9 +35,9 @@ class TabTracker:
         self.tabs.remove(tab)
 
 
-class CategoryTracker:
+class CategoryTracker(object):
     def __init__(self, categories=[]):
-        self.categories = categories
+        self.categories = CategoryList(categories)
 
     def add_category(self, category):
         if type(category) == Category:
@@ -58,13 +58,13 @@ class CategoryTracker:
         self.categories.remove(category)
 
 
-class TaskTracker:
+class TaskTracker(object):
     def __init__(self, tasks=[]):
-        self.tasks = tasks
+        self.tasks = TaskList(tasks)
 
     def add_task(self, task):
         if type(task) == Task:
-            self.task.append(task)
+            self.tasks.append(task)
         else:
             raise Exception("Input provided is not a Task")
 
@@ -81,7 +81,19 @@ class TaskTracker:
         self.tasks.remove(task)
 
 
-class Tab:
+class TabList(list):
+    pass
+
+
+class CategoryList(list):
+    pass
+
+
+class TaskList(list):
+    pass
+
+
+class Tab(object):
     def __init__(self, tab_name, parent):
         self.id = util.generate_random_string()
         self.tab_name = tab_name
@@ -96,7 +108,7 @@ class Tab:
             page.render(page_data)
 
 
-class Category:
+class Category(object):
     def __init__(self, parent, label="", color=[0, 0, 0, -1]):
         self.id = util.generate_random_string()
         self.group = "catgroup" + self.id
@@ -140,7 +152,7 @@ class Category:
             task.checkbox_check(task.id, None)
 
 
-class Task:
+class Task(object):
     def __init__(self, label, category_id):
         self.id = util.generate_random_string()
         self.group = "taskgroup" + self.id

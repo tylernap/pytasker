@@ -52,6 +52,7 @@ class Page:
                             "label": task["label"],
                             "complete": task["complete"],
                             "parent": f"cattasks{category_id}",
+                            "category": category_id
                         },
                     )
 
@@ -174,7 +175,7 @@ class Page:
         if "complete" in data:
             task.complete = data["complete"]
         category = self.category_tracker.get_category(data["category"])
-        category.tasks.tasks.append(task)
+        category.tasks.add_task(task)
 
         task.render()
 
@@ -229,10 +230,10 @@ class MainGui:
             dpg.add_button("NewTabGo", label="Go", callback=self.create_tab)
 
     def create_tab(self, sender, data):
+        tab_name = dpg.get_value("NewTabName")
         dpg.delete_item("NewPopup")
         if dpg.does_item_exist("inittext"):
             dpg.delete_item("inittext")
-        tab_name = dpg.get_value("NewTabName")
         tab = trackers.Tab(tab_name, "tab_bar_1")
         self.tab_tracker.add_tab(tab)
         page = Page(f"{tab_name}Page", f"tab{tab.id}")
