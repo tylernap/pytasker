@@ -4,8 +4,8 @@
 block_cipher = None
 
 
-a = Analysis(['src/pytasker.py'],
-             pathex=['/home/honk/github/pytasker/src'],
+a = Analysis(['pytasker.py'],
+             pathex=['/home/honk/github/pytasker'],
              binaries=[],
              datas=[],
              hiddenimports=[],

@@ -27,6 +27,7 @@ jobs:
       with:
         # Directory containing source code (optional requirements.txt).
         path: src
+        spec: pytasker.spec
 
     - uses: actions/upload-artifact@v2
       with:
