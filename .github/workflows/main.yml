@@ -26,9 +26,9 @@ jobs:
       uses: JackMcKew/pyinstaller-action-windows@v0.1.2
       with:
         # Directory containing source code (optional requirements.txt).
-        path: /
+        path: src
 
     - uses: actions/upload-artifact@v2
       with:
         name: pytasker
-        path: dist/windows
+        path: src/dist/windows
