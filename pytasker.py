@@ -132,7 +132,9 @@ class Page:
             self.changes = True
 
         # Render the Add Task button
-        with simple.group(f"cattasks{category.id}", parent=f"catgroup{category.id}"):
+        with simple.group(f"catitems{category.id}", parent=f"catgroup{category.id}"):
+            dpg.add_group(f"cattasks{category.id}", parent=f"catitems{category.id}")
+            dpg.end()
             dpg.add_indent()
             dpg.add_spacing(name=f"taskspace{category.id}")
             dpg.add_button(
@@ -171,7 +173,7 @@ class Page:
             input_id = dpg.get_item_parent(sender).replace("newtask", "")
             task_label = dpg.get_value(f"tasklabel{input_id}")
             dpg.delete_item(dpg.get_item_parent(sender))
-        task = trackers.Task(task_label, data["category"])
+        task = trackers.Task(task_label, self, data["category"])
         if "complete" in data:
             task.complete = data["complete"]
         category = self.category_tracker.get_category(data["category"])

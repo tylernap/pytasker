@@ -153,16 +153,17 @@ class Category(object):
 
 
 class Task(object):
-    def __init__(self, label, category_id):
+    def __init__(self, label, page, category_id):
         self.id = util.generate_random_string()
         self.group = "taskgroup" + self.id
         self.label = label
+        self.page = page
         self.category_id = category_id
         self.complete = False
 
     def render(self):
         with simple.group(
-            self.group, parent=self.category_id, before=f"taskspace{self.category_id}"
+            self.group, parent=f"cattasks{self.category_id}"
         ):
             dpg.add_indent()
             dpg.add_checkbox(
@@ -170,6 +171,22 @@ class Task(object):
                 label=self.label,
                 default_value=self.complete,
                 callback=self.checkbox_check,
+            )
+            dpg.add_same_line(spacing=10)
+            dpg.add_button(
+                f"up{self.id}",
+                arrow=True,
+                direction=2,
+                callback=self.move_task_up,
+                callback_data={"item": self.group}
+            )
+            dpg.add_same_line()
+            dpg.add_button(
+                f"down{self.id}",
+                arrow=True,
+                direction=3,
+                callback=self.move_task_down,
+                callback_data={"item": self.group}
             )
             dpg.unindent()
 
@@ -180,3 +197,27 @@ class Task(object):
     def checkbox_check(self, sender, data):
         self.complete = dpg.get_value(sender)
         dpg.configure_item(self.id, enabled=not self.complete)
+
+    def move_task_up(self, sender, data):
+        dpg.move_item_up(data["item"])
+        task_tracker = self.page.category_tracker.get_category(self.category_id).tasks
+        task = task_tracker.get_task(self.id)
+        task_index = task_tracker.tasks.index(task)
+        if task_index > 0:
+            task_tracker.tasks.insert(task_index - 1, task_tracker.tasks.pop(task_index))
+            if not self.page.changes:
+                item = dpg.get_item_configuration(self.page.parent)
+                dpg.configure_item(self.page.parent, label="!" + item["label"])
+                self.page.changes = True
+
+    def move_task_down(self, sender, data):
+        dpg.move_item_down(data["item"])
+        task_tracker = self.page.category_tracker.get_category(self.category_id).tasks
+        task = task_tracker.get_task(self.id)
+        task_index = task_tracker.tasks.index(task)
+        if task_index < len(task_tracker.tasks) - 1:
+            task_tracker.tasks.insert(task_index + 1, task_tracker.tasks.pop(task_index))
+            if not self.page.changes:
+                item = dpg.get_item_configuration(self.page.parent)
+                dpg.configure_item(self.page.parent, label="!" + item["label"])
+                self.page.changes = True
