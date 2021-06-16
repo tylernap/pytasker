@@ -29,7 +29,8 @@ jobs:
         path: src
         spec: pytasker.spec
 
-    - uses: actions/upload-artifact@v2
+    - uses: softprops/action-gh-release@v1
       with:
-        name: pytasker
-        path: src/dist/windows
+        files: src/dist/windows/pytasker.exe
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
